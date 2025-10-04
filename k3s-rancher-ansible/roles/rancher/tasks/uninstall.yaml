@@ -1,0 +1,12 @@
+---
+- name: Uninstall Rancher Helm release
+  community.kubernetes.helm:
+    name: rancher
+    namespace: cattle-system
+    state: absent
+
+- name: Delete cert-manager if installed
+  when: rancher_tls_source in ["rancher", "letsEncrypt"]
+  import_role:
+    name: cert_manager
+    tasks_from: uninstall.yaml

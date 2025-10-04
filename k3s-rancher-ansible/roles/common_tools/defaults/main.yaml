@@ -1,0 +1,21 @@
+common_tools:
+  - name: kubectl
+    version: "v1.27.5"
+    url: "https://dl.k8s.io/release/{{ item.version }}/bin/linux/amd64/kubectl"
+    dest: /usr/local/bin/kubectl
+    mode: '0755'
+    type: binary
+
+  - name: helm
+    version: "v3.12.1"
+    url: "https://get.helm.sh/helm-{{ item.version }}-linux-amd64.tar.gz"
+    dest: /usr/local/bin/helm
+    type: tar
+    binary_path_in_tar: linux-amd64/helm
+
+  - name: k9s
+    version: "v0.27.2"
+    url: "https://github.com/derailed/k9s/releases/download/{{ item.version }}/k9s_Linux_x86_64.tar.gz"
+    dest: /usr/local/bin/k9s
+    type: tar
+    binary_path_in_tar: k9s

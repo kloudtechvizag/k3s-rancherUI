@@ -1,0 +1,50 @@
+
+---
+- name: Check if Rancher Helm repo exists
+  shell: helm repo list -o json
+  register: helm_repos
+  changed_when: false
+
+- name: Add Rancher Helm repo if missing
+  kubernetes.core.helm_repository:
+    name: rancher-latest
+    repo_url: "{{ rancher_helm_repo }}"
+    state: present
+  when: "'rancher-latest' not in (helm_repos.stdout | from_json | map(attribute='name') | list)"
+  ignore_errors: false
+
+- name: Ensure cert-manager role is applied (conditionally)
+  import_role:
+    name: cert_manager
+  when:
+    - rancher_tls_source is defined
+    - rancher_tls_source in ["rancher", "letsEncrypt"]
+    - not ansible_check_mode
+
+- name: Install/Upgrade Rancher via Helm (idempotent)
+  kubernetes.core.helm:
+    name: rancher
+    chart_ref: rancher-latest/rancher
+    namespace: cattle-system
+    create_namespace: yes
+    release_values:
+      hostname: "{{ rancher_hostname }}"
+      bootstrapPassword: "{{ rancher_bootstrap_password }}"
+      tls: >-
+        {% if rancher_tls_source in ['rancher', 'letsEncrypt'] %}
+        "{{ rancher_tls_source }}"
+        {% else %}
+        { cert: "{{ tls_cert_file }}", key: "{{ tls_key_file }}", ca: "{{ tls_ca_file }}" }
+        {% endif %}
+      letsEncrypt:
+        email: "{{ lets_encrypt_email | default(omit) }}"
+        environment: "{{ lets_encrypt_environment | default(omit) }}"
+    state: present
+  when:
+    - rancher_helm_repo is defined
+    - rancher_hostname is defined
+    - not ansible_check_mode
+  register: rancher_helm_result
+  retries: 3
+  delay: 10
+  until: rancher_helm_result is success

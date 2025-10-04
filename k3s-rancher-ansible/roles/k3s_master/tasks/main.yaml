@@ -1,0 +1,21 @@
+---
+- name: Install K3s server
+  ansible.builtin.shell: |
+    curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION={{ k3s_version }} sh -s - server \
+      {% if ha_enabled and datastore_endpoint != "" %}
+      --datastore-endpoint="{{ datastore_endpoint }}"
+      {% endif %}
+  args:
+    creates: /usr/local/bin/k3s
+
+- name: Retrieve K3s token
+  ansible.builtin.command: cat /var/lib/rancher/k3s/server/token
+  register: k3s_token
+  changed_when: false
+
+- name: Copy Kubeconfig
+  ansible.builtin.copy:
+    src: /etc/rancher/k3s/k3s.yaml
+    dest: ~/.kube/config
+    remote_src: yes
+  when: not ansible_check_mode

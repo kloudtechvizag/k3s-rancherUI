@@ -1,0 +1,21 @@
+# K3s
+k3s_version: "v1.27.7+k3s1"
+k3s_datastore_endpoint: "mysql://username:password@tcp(mysql.example.com:3306)/k3s_db"
+
+# Rancher
+rancher_version: "latest"
+rancher_hostname: "rancher.example.com"
+rancher_bootstrap_password: "AdminRancher#2025"
+rancher_tls_source: "rancher"  # rancher | letsEncrypt | secret
+
+# LetsEncrypt
+lets_encrypt_email: "admin@example.com"
+lets_encrypt_environment: "production"
+
+# Certificates from files
+tls_cert_file: "/path/to/tls.crt"
+tls_key_file: "/path/to/tls.key"
+tls_ca_file: "/path/to/ca.crt"
+
+# Helm repos
+rancher_helm_repo: "https://releases.rancher.com/server-charts/latest"

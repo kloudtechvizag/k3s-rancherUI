@@ -1,0 +1,29 @@
+---
+- name: Stop K3s service
+  ansible.builtin.systemd:
+    name: k3s
+    state: stopped
+    enabled: no
+
+- name: Uninstall K3s
+  ansible.builtin.shell: |
+    /usr/local/bin/k3s-uninstall.sh
+  args:
+    warn: false
+    executable: /bin/bash
+  ignore_errors: yes
+
+- name: Remove kubeconfig
+  ansible.builtin.file:
+    path: ~/.kube/config
+    state: absent
+
+- name: Remove K3s directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+    recurse: yes
+  loop:
+    - /etc/rancher/k3s
+    - /var/lib/rancher/k3s
+    - /var/lib/rancher/agent

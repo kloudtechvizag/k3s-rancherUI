@@ -1,0 +1,9 @@
+---
+- name: Setup K3s Master and Rancher
+  hosts: all
+  become: true
+  roles:
+    - common_tools
+    - k3s_master
+    - cert_manager 
+    - rancher

@@ -1,0 +1,6 @@
+---
+- name: Uninstall cert-manager
+  community.kubernetes.helm:
+    name: cert-manager
+    namespace: cert-manager
+    state: absent
