@@ -21,25 +21,36 @@
     - rancher_tls_source in ["rancher", "letsEncrypt"]
     - not ansible_check_mode
 
+
 - name: Install/Upgrade Rancher via Helm (idempotent)
   kubernetes.core.helm:
     name: rancher
     chart_ref: rancher-latest/rancher
     namespace: cattle-system
     create_namespace: yes
-    release_values:
-      hostname: "{{ rancher_hostname }}"
-      bootstrapPassword: "{{ rancher_bootstrap_password }}"
-      tls: >-
-        {% if rancher_tls_source in ['rancher', 'letsEncrypt'] %}
-        "{{ rancher_tls_source }}"
-        {% else %}
-        { cert: "{{ tls_cert_file }}", key: "{{ tls_key_file }}", ca: "{{ tls_ca_file }}" }
-        {% endif %}
-      letsEncrypt:
-        email: "{{ lets_encrypt_email | default(omit) }}"
-        environment: "{{ lets_encrypt_environment | default(omit) }}"
+    release_values: >-
+      {{
+        {
+          'hostname': rancher_hostname,
+          'bootstrapPassword': rancher_bootstrap_password,
+          'rancherImage': 'docker.io/rancher/rancher',
+          'rancherImageTag': rancher_version,
+          'ingress': {
+            'tls': {
+              'source': rancher_tls_source if rancher_tls_source in ['rancher', 'secret'] else 'letsEncrypt'
+            }
+          },
+          'letsEncrypt': (
+            {
+              'email': lets_encrypt_email,
+              'environment': lets_encrypt_environment
+            } if rancher_tls_source == 'letsEncrypt' else omit
+          )
+        }
+      }}
     state: present
+    wait: yes            # Wait for all resources to be ready
+    wait_timeout: 300s    # Wait up to 5 minutes (adjust if needed)
   when:
     - rancher_helm_repo is defined
     - rancher_hostname is defined
@@ -48,3 +59,4 @@
   retries: 3
   delay: 10
   until: rancher_helm_result is success
+

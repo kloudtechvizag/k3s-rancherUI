@@ -1,7 +1,0 @@
----
-- name: Uninstall Rancher and K3s
-  hosts: all
-  become: true
-  roles:
-    - rancher
-    - k3s_master

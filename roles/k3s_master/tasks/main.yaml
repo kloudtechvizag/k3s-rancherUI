@@ -1,0 +1,49 @@
+---
+- name: Install K3s server
+  ansible.builtin.shell: |
+    curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION={{ k3s_version }} sh -s - server \
+      {% if ha_enabled and datastore_endpoint != "" %}
+      --datastore-endpoint="{{ datastore_endpoint }}"
+      {% endif %}
+  args:
+    creates: /usr/local/bin/k3s
+
+- name: Retrieve K3s token
+  ansible.builtin.command: cat /var/lib/rancher/k3s/server/token
+  register: k3s_token
+  changed_when: false
+
+- name: Ensure ~/.kube directory exists
+  ansible.builtin.file:
+    path: "{{ ansible_env.HOME }}/.kube"
+    state: directory
+    mode: '0755'
+
+- name: Check if kubeconfig already exists
+  ansible.builtin.stat:
+    path: "{{ ansible_env.HOME }}/.kube/config"
+  register: kubeconfig_stat
+
+- name: Backup existing kubeconfig (if present)
+  ansible.builtin.copy:
+    src: "{{ ansible_env.HOME }}/.kube/config"
+    dest: "{{ ansible_env.HOME }}/.kube/config.backup_{{ ansible_date_time.iso8601 }}"
+    remote_src: yes
+  when: kubeconfig_stat.stat.exists
+
+- name: Merge or create kubeconfig
+  ansible.builtin.shell: |
+    K3S_CFG="/etc/rancher/k3s/k3s.yaml"
+    KUBE_CFG="{{ ansible_env.HOME }}/.kube/config"
+    if [ -f "$KUBE_CFG" ]; then
+      KUBECONFIG="$KUBE_CFG:$K3S_CFG" kubectl config view --flatten > /tmp/config_merged.yaml
+      mv /tmp/config_merged.yaml "$KUBE_CFG"
+    else
+      mkdir -p "$(dirname $KUBE_CFG)"
+      cp "$K3S_CFG" "$KUBE_CFG"
+    fi
+    chmod 600 "$KUBE_CFG"
+  args:
+    executable: /bin/bash
+  changed_when: true
+  when: not ansible_check_mode

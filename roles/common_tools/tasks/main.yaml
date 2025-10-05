@@ -1,0 +1,97 @@
+---
+- name: Check if tools are already installed
+  command: "{{ item.dest }} {{ item.version_cmd | default('version --client --short') }}"
+  register: tool_versions
+  failed_when: false        # Prevents marking as FAILED
+  ignore_errors: no         # Not needed once failed_when handles it
+  changed_when: false
+  loop: "{{ common_tools }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+
+- name: Initialize current versions dict
+  set_fact:
+    current_tool_versions: {}
+
+- name: Set current versions fact
+  set_fact:
+    current_tool_versions: "{{ current_tool_versions | combine({item.item.name: (item.stdout | regex_search('v[0-9.]+') | default('none'))}) }}"
+  loop: "{{ tool_versions.results }}"
+  when: item.rc == 0
+
+- name: Debug current version (for audit)
+  debug:
+    msg: "{{ item.name }} current version: {{ current_tool_versions.get(item.name, 'not installed') }} | desired: {{ item.version }}"
+  loop: "{{ common_tools }}"
+
+- name: Download {{ item.name }} if upgrade or install required
+  get_url:
+    url: "{{ item.url }}"
+    dest: "/tmp/{{ item.name }}-{{ item.version }}.{{ 'tar.gz' if item.type == 'tar' else 'bin' }}"
+    mode: '0755'
+  when: current_tool_versions.get(item.name, 'none') != item.version
+  loop: "{{ common_tools }}"
+  become: yes
+
+- name: Create extraction directory for {{ item.name }} if tarball
+  file:
+    path: "/tmp/{{ item.name }}-{{ item.version }}"
+    state: directory
+    mode: '0755'
+  when:
+    - item.type == 'tar'
+    - current_tool_versions.get(item.name, 'none') != item.version
+  loop: "{{ common_tools }}"
+  become: yes
+
+- name: Extract {{ item.name }} if tarball
+  unarchive:
+    src: "/tmp/{{ item.name }}-{{ item.version }}.tar.gz"
+    dest: "/tmp/{{ item.name }}-{{ item.version }}"
+    remote_src: yes
+    creates: "/tmp/{{ item.name }}-{{ item.version }}/{{ item.binary_path_in_tar | default(item.name) }}"
+  when:
+    - item.type == 'tar'
+    - current_tool_versions.get(item.name, 'none') != item.version
+  loop: "{{ common_tools }}"
+  become: yes
+
+- name: Move {{ item.name }} binary to {{ item.dest }}
+  copy:
+    src: "/tmp/{{ item.name }}-{{ item.version }}/{{ item.binary_path_in_tar | default(item.name) }}"
+    dest: "{{ item.dest }}"
+    mode: '0755'
+    remote_src: yes
+    backup: yes  # Optional: backup existing if upgrading
+  when:
+    - item.type == 'tar'
+    - current_tool_versions.get(item.name, 'none') != item.version
+  loop: "{{ common_tools }}"
+  become: yes
+
+- name: Move downloaded binary for {{ item.name }}
+  copy:
+    src: "/tmp/{{ item.name }}-{{ item.version }}.bin"
+    dest: "{{ item.dest }}"
+    mode: '0755'
+    remote_src: yes
+    backup: yes  # Optional: backup existing if upgrading
+  when:
+    - item.type == 'binary'
+    - current_tool_versions.get(item.name, 'none') != item.version
+  loop: "{{ common_tools }}"
+  become: yes
+
+- name: Generate cleanup paths
+  set_fact:
+    cleanup_paths: "{{ cleanup_paths | default([]) + [ '/tmp/' + item.name + '-' + item.version + '.' + ('tar.gz' if item.type == 'tar' else 'bin') , '/tmp/' + item.name + '-' + item.version ] }}"
+  when: current_tool_versions.get(item.name, 'none') != item.version
+  loop: "{{ common_tools }}"
+
+- name: Cleanup temporary files
+  file:
+    path: "{{ item }}"
+    state: absent
+  loop: "{{ cleanup_paths | default([]) }}"
+  become: yes

@@ -1,0 +1,25 @@
+---
+common_tools:
+  - name: kubectl
+    version: "v1.27.5"
+    url: "https://dl.k8s.io/release/v1.27.5/bin/linux/amd64/kubectl"
+    dest: "/usr/local/bin/kubectl"
+    mode: '0755'
+    type: binary
+    version_cmd: "version --client --short"  # Outputs: Client Version: v1.27.5
+
+  - name: helm
+    version: "v3.12.1"
+    url: "https://get.helm.sh/helm-v3.12.1-linux-amd64.tar.gz"
+    dest: "/usr/local/bin/helm"
+    type: tar
+    binary_path_in_tar: linux-amd64/helm
+    version_cmd: "version --client --short"  # Outputs: version.BuildInfo{Version:"v3.12.1", ...}
+
+  - name: k9s
+    version: "v0.50.13"
+    url: "https://github.com/derailed/k9s/releases/download/v0.50.13/k9s_Linux_amd64.tar.gz"
+    dest: "/usr/local/bin/k9s"
+    type: tar
+    binary_path_in_tar: k9s
+    version_cmd: "version"  # Outputs: k9s version v0.50.13

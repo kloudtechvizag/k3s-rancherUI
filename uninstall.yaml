@@ -1,0 +1,25 @@
+---
+- name: Uninstall K3s Master and Rancher
+  hosts: all
+  become: true
+
+  tasks:
+    - name: Uninstall K3s Master
+      import_role:
+        name: k3s_master
+        tasks_from: uninstall
+
+    # - name: Uninstall Rancher
+    #   import_role:
+    #     name: rancher
+    #     tasks_from: uninstall
+
+    # - name: Uninstall Cert Manager
+    #   import_role:
+    #     name: cert_manager
+    #     tasks_from: uninstall
+
+    # - name: Cleanup Common Tools
+    #   import_role:
+    #     name: common_tools
+    #     tasks_from: uninstall

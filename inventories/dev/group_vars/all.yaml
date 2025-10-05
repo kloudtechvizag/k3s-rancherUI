@@ -4,7 +4,7 @@ k3s_version: v1.27.5+k3s1
 datastore_endpoint: ""   # empty for dev single-node setup (SQLite default)
 
 # Rancher Configuration
-rancher_version: v2.12.2
+rancher_version: "latest"
 rancher_hostname: "ec2-3-90-109-68.compute-1.amazonaws.com"
 rancher_bootstrap_password: "Adminrancher#2025"
 
@@ -12,8 +12,7 @@ rancher_helm_repo: "https://releases.rancher.com/server-charts/stable"
 
 # TLS / Ingress Configuration
 rancher_tls_source: "rancher" # Options: rancher, letsEncrypt, secret 
-# tls_secret_name: ""             # Only used if ingress_tls_source=secret
-# private_ca: false               # Used only for Rancher-generated certs
+
 
 # Optional: Let’s Encrypt settings if ingress_tls_source=letsEncrypt
 lets_encrypt_email: "dev-admin@example.com"

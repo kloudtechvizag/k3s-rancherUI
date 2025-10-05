@@ -1,0 +1,15 @@
+---
+- name: Uninstall common tools (kubectl, helm, k9s)
+  file:
+    path: "{{ item.dest }}"
+    state: absent
+  loop: "{{ common_tools }}"
+  ignore_errors: yes
+
+- name: Remove leftover temp archives
+  file:
+    path: "/tmp/{{ item.name }}*"
+    state: absent
+    recurse: yes
+  loop: "{{ common_tools }}"
+  ignore_errors: yes
