@@ -48,7 +48,7 @@
         }
       }}
     state: present
-    wait: yes            # Wait for all resources to be ready
+    wait: yes             # Wait for all resources to be ready
     wait_timeout: 300s    # Wait up to 5 minutes (adjust if needed)
   when:
     - rancher_helm_repo is defined
