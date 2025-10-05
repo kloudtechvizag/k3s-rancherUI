@@ -34,7 +34,7 @@ k3s-rancherUI/
 ## 🔧 Prerequisites
 
 ### System Requirements
-- **OS**: Ubuntu 18.04+, Amazon Linux 2, CentOS 7+
+- **OS**: Ubuntu 18.04+, Amazon Linux 2, CentOS 7+, Oracle Linux 9
 - **Memory**: 4GB+ RAM
 - **CPU**: 2+ cores
 - **Storage**: 20GB+ available space
