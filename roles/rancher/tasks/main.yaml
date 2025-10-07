@@ -59,3 +59,11 @@
   delay: 10
   until: rancher_helm_result is success
 
+- name: Configure node drivers and cluster management
+  include_tasks: node_driver.yaml
+  when: rancher_configure_drivers | default(false)
+
+- name: Setup cluster management
+  include_tasks: cluster_management.yaml
+  when: rancher_manage_clusters | default(false) or rancher_import_existing_cluster | default(false)
+

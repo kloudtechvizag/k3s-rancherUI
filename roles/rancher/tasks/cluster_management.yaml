@@ -1,0 +1,106 @@
+---
+- name: Wait for Rancher to be ready
+  uri:
+    url: "https://{{ rancher_hostname }}/ping"
+    method: GET
+    validate_certs: no
+    status_code: [200, 401]
+  register: rancher_ping
+  until: rancher_ping.status in [200, 401]
+  retries: 30
+  delay: 10
+
+- name: Get Rancher login token
+  uri:
+    url: "https://{{ rancher_hostname }}/v3-public/localProviders/local?action=login"
+    method: POST
+    body_format: json
+    body:
+      username: admin
+      password: "{{ rancher_bootstrap_password }}"
+    validate_certs: no
+  register: login_response
+  when: rancher_manage_clusters | default(false)
+
+- name: Set API token
+  set_fact:
+    rancher_token: "{{ login_response.json.token }}"
+  when: rancher_manage_clusters | default(false) and login_response is defined
+
+- name: Create custom cluster for on-prem VMs
+  uri:
+    url: "https://{{ rancher_hostname }}/v3/clusters"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ rancher_token }}"
+    body_format: json
+    body:
+      type: "cluster"
+      name: "{{ item.name }}"
+      rancherKubernetesEngineConfig:
+        kubernetesVersion: "{{ item.kubernetes_version | default('v1.27.7+rke2r1') }}"
+        network:
+          plugin: "{{ item.cni | default('canal') }}"
+        services:
+          etcd:
+            creation: "12h"
+            retention: "72h"
+          kubeApi:
+            serviceNodePortRange: "30000-32767"
+    validate_certs: no
+  loop: "{{ rancher_onprem_clusters | default([]) }}"
+  register: onprem_clusters
+  when: rancher_manage_clusters | default(false) and rancher_token is defined
+
+- name: Get registration tokens for custom clusters
+  uri:
+    url: "https://{{ rancher_hostname }}/v3/clusterregistrationtokens"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ rancher_token }}"
+    body_format: json
+    body:
+      type: "clusterregistrationtoken"
+      clusterId: "{{ item.json.id }}"
+    validate_certs: no
+  loop: "{{ onprem_clusters.results | default([]) }}"
+  register: cluster_tokens
+  when: onprem_clusters is defined
+
+- name: Display registration commands
+  debug:
+    msg: |
+      Cluster: {{ item.item.json.name }}
+      Registration command for your VMs:
+      
+      # All roles (control-plane + etcd + worker):
+      {{ item.json.nodeCommand }} --etcd --controlplane --worker
+      
+      # Worker only:
+      {{ item.json.nodeCommand }} --worker
+  loop: "{{ cluster_tokens.results | default([]) }}"
+  when: cluster_tokens is defined
+
+- name: Generate cluster registration command
+  uri:
+    url: "https://{{ rancher_hostname }}/v3/clusterregistrationtokens"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ rancher_token }}"
+    body_format: json
+    body:
+      type: "clusterregistrationtoken"
+      clusterId: "{{ rancher_import_cluster_id | default('local') }}"
+    validate_certs: no
+  register: registration_token
+  when: rancher_import_existing_cluster | default(false) and rancher_token is defined
+
+- name: Display cluster import command
+  debug:
+    msg: |
+      To import your existing RKE2 cluster, run this command on your cluster:
+      {{ registration_token.json.manifestUrl }}
+      
+      Or apply the manifest directly:
+      kubectl apply -f {{ registration_token.json.manifestUrl }}
+  when: rancher_import_existing_cluster | default(false) and registration_token is defined

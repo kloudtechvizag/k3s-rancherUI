@@ -1,0 +1,72 @@
+---
+- name: Deploy RKE2 clusters from Rancher UI
+  hosts: localhost
+  connection: local
+  vars:
+    rancher_server_url: "https://{{ rancher_hostname }}"
+  tasks:
+    - name: Login to Rancher API
+      uri:
+        url: "{{ rancher_server_url }}/v3-public/localProviders/local?action=login"
+        method: POST
+        body_format: json
+        body:
+          username: admin
+          password: "{{ rancher_bootstrap_password }}"
+        validate_certs: no
+      register: login_response
+
+    - name: Set API token
+      set_fact:
+        rancher_token: "{{ login_response.json.token }}"
+
+    - name: Create custom cluster
+      uri:
+        url: "{{ rancher_server_url }}/v3/clusters"
+        method: POST
+        headers:
+          Authorization: "Bearer {{ rancher_token }}"
+        body_format: json
+        body:
+          type: "cluster"
+          name: "{{ item.name }}"
+          rancherKubernetesEngineConfig:
+            kubernetesVersion: "{{ item.kubernetes_version }}"
+            network:
+              plugin: "{{ item.cni }}"
+            services:
+              etcd:
+                creation: "12h"
+                retention: "72h"
+        validate_certs: no
+      loop: "{{ rancher_deploy_clusters }}"
+      register: cluster_creation_response
+
+    - name: Get cluster registration command
+      uri:
+        url: "{{ rancher_server_url }}/v3/clusterregistrationtokens"
+        method: POST
+        headers:
+          Authorization: "Bearer {{ rancher_token }}"
+        body_format: json
+        body:
+          type: "clusterregistrationtoken"
+          clusterId: "{{ item.json.id }}"
+        validate_certs: no
+      loop: "{{ cluster_creation_response.results }}"
+      register: registration_tokens
+
+    - name: Display cluster registration commands
+      debug:
+        msg: |
+          Cluster {{ item.item.item.name }} created. Run these commands on your VMs:
+          
+          # Control Plane + etcd + Worker:
+          {{ item.json.nodeCommand }} --etcd --controlplane --worker
+          
+          # Worker only:
+          {{ item.json.nodeCommand }} --worker
+          
+          Check Rancher UI: {{ rancher_server_url }}
+      loop: "{{ registration_tokens.results }}"
+      when: registration_tokens is defined

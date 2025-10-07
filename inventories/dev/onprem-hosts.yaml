@@ -1,0 +1,27 @@
+all:
+  children:
+    cluster_nodes:
+      hosts:
+        onprem-master-01:
+          ansible_host: 192.168.1.10
+          ansible_user: ubuntu
+          ansible_ssh_private_key_file: /home/dev/.ssh/onprem-key.pem
+          node_roles: "--etcd --controlplane"
+        
+        onprem-master-02:
+          ansible_host: 192.168.1.10
+          ansible_user: ubuntu
+          ansible_ssh_private_key_file: /home/dev/.ssh/onprem-key.pem
+          node_roles: "--etcd --controlplane"
+
+        onprem-worker-01:
+          ansible_host: 192.168.1.11
+          ansible_user: ubuntu
+          ansible_ssh_private_key_file: /home/dev/.ssh/onprem-key.pem
+          node_roles: "--worker"
+          
+        onprem-worker-02:
+          ansible_host: 192.168.1.12
+          ansible_user: ubuntu
+          ansible_ssh_private_key_file: /home/dev/.ssh/onprem-key.pem
+          node_roles: "--worker"

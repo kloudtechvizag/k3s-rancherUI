@@ -1,0 +1,35 @@
+---
+- name: Import existing RKE2 cluster to Rancher
+  hosts: rke2_servers[0]
+  become: true
+  vars:
+    rancher_import_cluster: true
+    rancher_server_url: "https://{{ rancher_hostname }}"
+  tasks:
+    - name: Get cluster registration token from Rancher
+      uri:
+        url: "{{ rancher_server_url }}/v3/clusterregistrationtokens"
+        method: POST
+        headers:
+          Authorization: "Bearer {{ rancher_api_token }}"
+        body_format: json
+        body:
+          type: "clusterregistrationtoken"
+          clusterId: "{{ rancher_target_cluster_id | default('c-m-') }}{{ ansible_date_time.epoch }}"
+        validate_certs: no
+      register: registration_response
+      delegate_to: localhost
+      when: rancher_api_token is defined
+
+    - name: Apply Rancher agent manifest
+      kubernetes.core.k8s:
+        state: present
+        src: "{{ registration_response.json.manifestUrl }}"
+      when: registration_response is defined and registration_response.json.manifestUrl is defined
+
+    - name: Display import status
+      debug:
+        msg: |
+          Cluster import initiated. Check Rancher UI at {{ rancher_server_url }}
+          Manifest URL: {{ registration_response.json.manifestUrl | default('N/A') }}
+      when: registration_response is defined

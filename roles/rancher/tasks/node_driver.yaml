@@ -1,0 +1,33 @@
+---
+- name: Configure custom cluster settings
+  uri:
+    url: "https://{{ rancher_hostname }}/v3/settings/cluster-defaults"
+    method: PUT
+    headers:
+      Authorization: "Bearer {{ rancher_token }}"
+    body_format: json
+    body:
+      name: "cluster-defaults"
+      value: |
+        {
+          "rancherKubernetesEngineConfig": {
+            "ignoreDockerVersion": true,
+            "sshAgentAuth": false,
+            "type": "rancherKubernetesEngineConfig"
+          }
+        }
+    validate_certs: no
+  when: rancher_configure_defaults | default(true)
+
+- name: Enable custom cluster creation
+  uri:
+    url: "https://{{ rancher_hostname }}/v3/settings/ui-default-landing"
+    method: PUT
+    headers:
+      Authorization: "Bearer {{ rancher_token }}"
+    body_format: json
+    body:
+      name: "ui-default-landing"
+      value: "vue"
+    validate_certs: no
+  when: rancher_enable_ui | default(true)
