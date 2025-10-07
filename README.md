@@ -47,10 +47,10 @@ all:
   hosts:
     k3s-master-01:
       ansible_host: 10.0.1.10
+      ansible_user: ubuntu
     k3s-master-02:
       ansible_host: 10.0.1.11
-    k3s-master-03:
-      ansible_host: 10.0.1.12
+      ansible_user: ubuntu
 ```
 
 ### 2. Variables
@@ -65,9 +65,9 @@ rancher_bootstrap_password: "YourSecurePassword123!"
 rancher_tls_source: "letsEncrypt"
 lets_encrypt_email: "admin@yourdomain.com"
 
-# HA setup (production only)
+# HA setup (requires external database)
 ha_enabled: true
-k3s_datastore_endpoint: "mysql://user:pass@tcp(host:3306)/db"
+datastore_endpoint: "mysql://user:pass@tcp(host:3306)/db"
 ```
 
 ## Deployment
@@ -136,8 +136,13 @@ tls_key_file: "/path/to/key.key"
 ### HA Configuration
 ```yaml
 ha_enabled: true
-k3s_datastore_endpoint: "mysql://user:pass@tcp(host:3306)/db"
+datastore_endpoint: "mysql://user:pass@tcp(host:3306)/db"
 ```
+
+**HA Deployment Process:**
+1. First node becomes primary master with external datastore
+2. Secondary nodes join using token from primary
+3. Management tools installed only on primary node
 
 ## Security Notes
 

@@ -1,11 +1,11 @@
 all:
   hosts:
-    dev-k3s-master-01:
+    dev-k3s-rancher-01:
       ansible_host: ec2-54-234-254-213.compute-1.amazonaws.com
       ansible_user: ubuntu
       ansible_ssh_private_key_file: /home/dev/.ssh/dev-jag.pem
     
-    dev-k3s-master-02:
+    dev-k3s-rancher-02:
       ansible_host: ec2-52-23-169-72.compute-1.amazonaws.com
       ansible_user: ubuntu
       ansible_ssh_private_key_file: /home/dev/.ssh/dev-jag.pem

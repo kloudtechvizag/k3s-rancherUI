@@ -1,7 +1,7 @@
 # K3s Configuration
 ha_enabled: true
 k3s_version: v1.27.5+k3s1
-datastore_endpoint: ""   # empty for dev single-node setup (SQLite default)
+datastore_endpoint: "mysql://k3s_admin:K3sDB#2025!@tcp(172.31.18.38:3306)/dev_k3s_cluster"
 
 # Rancher Configuration
 rancher_version: "latest"

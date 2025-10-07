@@ -1,9 +1,20 @@
 ---
-- name: Setup K3s Master and Rancher
-  hosts: all
+- name: Setup Common Tools
+  hosts: all[0]
   become: true
   roles:
     - common_tools
+
+- name: Setup K3s Masters
+  hosts: all
+  become: true
+  serial: 1
+  roles:
     - k3s_master
+
+- name: Setup Cert Manager and Rancher
+  hosts: all[0]
+  become: true
+  roles:
     - cert_manager 
     - rancher

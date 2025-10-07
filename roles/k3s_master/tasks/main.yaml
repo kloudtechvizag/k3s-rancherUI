@@ -1,17 +1,66 @@
 ---
-- name: Install K3s server
+- name: Install K3s primary server
   ansible.builtin.shell: |
     curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION={{ k3s_version }} sh -s - server \
-      {% if ha_enabled and datastore_endpoint != "" %}
+      {% if ha_enabled and datastore_endpoint is defined %}
       --datastore-endpoint="{{ datastore_endpoint }}"
       {% endif %}
   args:
     creates: /usr/local/bin/k3s
+  when: inventory_hostname == groups['all'][0]
+  register: k3s_install_result
 
-- name: Retrieve K3s token
+- name: Wait for K3s service to be ready
+  ansible.builtin.wait_for:
+    port: 6443
+    host: localhost
+    timeout: 300
+  when: inventory_hostname == groups['all'][0]
+
+- name: Wait for token file to be created
+  ansible.builtin.wait_for:
+    path: /var/lib/rancher/k3s/server/token
+    timeout: 300
+  when: inventory_hostname == groups['all'][0]
+
+- name: Wait for primary server to be ready
+  ansible.builtin.wait_for:
+    port: 6443
+    host: "{{ hostvars[groups['all'][0]]['ansible_host'] }}"
+    timeout: 300
+  when: inventory_hostname != groups['all'][0] and ha_enabled
+
+- name: Get K3s token from primary server
   ansible.builtin.command: cat /var/lib/rancher/k3s/server/token
-  register: k3s_token
-  changed_when: false
+  register: k3s_token_result
+  delegate_to: "{{ groups['all'][0] }}"
+  run_once: true
+  when: ha_enabled and groups['all'] | length > 1
+  retries: 3
+  delay: 10
+
+- name: Install K3s secondary servers
+  ansible.builtin.shell: |
+    curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION={{ k3s_version }} sh -s - server \
+      --datastore-endpoint="{{ datastore_endpoint }}" \
+      --token="{{ hostvars[groups['all'][0]]['k3s_token_result']['stdout'] }}"
+  args:
+    creates: /usr/local/bin/k3s
+  when: inventory_hostname != groups['all'][0] and ha_enabled and groups['all'] | length > 1
+
+- name: Wait for secondary K3s services to be ready
+  ansible.builtin.wait_for:
+    port: 6443
+    host: localhost
+    timeout: 300
+  when: inventory_hostname != groups['all'][0] and ha_enabled and groups['all'] | length > 1
+
+- name: Install K3s single node
+  ansible.builtin.shell: |
+    curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION={{ k3s_version }} sh -s - server
+  args:
+    creates: /usr/local/bin/k3s
+  when: not ha_enabled or groups['all'] | length == 1
 
 - name: Ensure ~/.kube directory exists
   ansible.builtin.file:
@@ -19,31 +68,9 @@
     state: directory
     mode: '0755'
 
-- name: Check if kubeconfig already exists
-  ansible.builtin.stat:
-    path: "{{ ansible_env.HOME }}/.kube/config"
-  register: kubeconfig_stat
-
-- name: Backup existing kubeconfig (if present)
+- name: Copy Kubeconfig
   ansible.builtin.copy:
-    src: "{{ ansible_env.HOME }}/.kube/config"
-    dest: "{{ ansible_env.HOME }}/.kube/config.backup_{{ ansible_date_time.iso8601 }}"
+    src: /etc/rancher/k3s/k3s.yaml
+    dest: ~/.kube/config
     remote_src: yes
-  when: kubeconfig_stat.stat.exists
-
-- name: Merge or create kubeconfig
-  ansible.builtin.shell: |
-    K3S_CFG="/etc/rancher/k3s/k3s.yaml"
-    KUBE_CFG="{{ ansible_env.HOME }}/.kube/config"
-    if [ -f "$KUBE_CFG" ]; then
-      KUBECONFIG="$KUBE_CFG:$K3S_CFG" kubectl config view --flatten > /tmp/config_merged.yaml
-      mv /tmp/config_merged.yaml "$KUBE_CFG"
-    else
-      mkdir -p "$(dirname $KUBE_CFG)"
-      cp "$K3S_CFG" "$KUBE_CFG"
-    fi
-    chmod 600 "$KUBE_CFG"
-  args:
-    executable: /bin/bash
-  changed_when: true
   when: not ansible_check_mode
