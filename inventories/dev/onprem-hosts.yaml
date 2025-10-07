@@ -3,25 +3,19 @@ all:
     cluster_nodes:
       hosts:
         onprem-master-01:
-          ansible_host: 192.168.1.10
+          ansible_host: ec2-54-88-34-197.compute-1.amazonaws.com
           ansible_user: ubuntu
           ansible_ssh_private_key_file: /home/dev/.ssh/onprem-key.pem
           node_roles: "--etcd --controlplane"
-        
-        onprem-master-02:
-          ansible_host: 192.168.1.10
-          ansible_user: ubuntu
-          ansible_ssh_private_key_file: /home/dev/.ssh/onprem-key.pem
-          node_roles: "--etcd --controlplane"
-
+      
         onprem-worker-01:
-          ansible_host: 192.168.1.11
+          ansible_host: ec2-54-166-162-154.compute-1.amazonaws.com
           ansible_user: ubuntu
           ansible_ssh_private_key_file: /home/dev/.ssh/onprem-key.pem
           node_roles: "--worker"
           
         onprem-worker-02:
-          ansible_host: 192.168.1.12
+          ansible_host: ec2-13-223-83-168.compute-1.amazonaws.com
           ansible_user: ubuntu
           ansible_ssh_private_key_file: /home/dev/.ssh/onprem-key.pem
           node_roles: "--worker"

@@ -13,14 +13,6 @@
   when: "'rancher-latest' not in (helm_repos.stdout | from_json | map(attribute='name') | list)"
   ignore_errors: false
 
-- name: Ensure cert-manager role is applied (conditionally)
-  import_role:
-    name: cert_manager
-  when:
-    - rancher_tls_source is defined
-    - rancher_tls_source in ["rancher", "letsEncrypt"]
-    - not ansible_check_mode
-
 
 - name: Install/Upgrade Rancher via Helm (idempotent)
   kubernetes.core.helm:
